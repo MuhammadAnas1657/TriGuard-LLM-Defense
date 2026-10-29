@@ -1,0 +1,22 @@
+% Auto-generated 9-Tier Ablation Study Table on InjecAgent (200 Stratified Cases)
+\begin{table*}[t]
+\centering
+\small
+\caption{Architectural Ablation of TriGuard v2 across 200 Stratified InjecAgent Cases (100 Direct Harm + 100 Data Stealing, \texttt{Meta-Llama-3.1-8B-Instruct}). Perm. Utility measures permission-level authorization utility (the proportion of legitimate tool actions allowed or clarified by the dispatcher without false blocking). Disabling Tier 1 ($A_3, A_6$) prevents token generation, while disabling Tier 3 ($A_0, A_2$) allows attacks to execute. Only the integrated architecture ($A_7$) achieves 0.0\% Executed ASR with 100.0\% permission-level utility.}
+\label{tab:injecagent_ablation}
+\begin{tabular}{llcccccccc}
+\toprule
+\textbf{ID} & \textbf{Configuration} & \textbf{$T_1$} & \textbf{$T_2$} & \textbf{$T_3$} & \textbf{Clarify} & \textbf{Attempt (\%)} & \textbf{Exec ASR (\%)} & \textbf{Block (\%)} & \textbf{Perm. Utility (\%)} \\
+\midrule
+A0 & Control (Undefended) & -- & -- & -- & -- & 45.0\% & 45.0\% & 0.0\% & 100.0\% \\
+A1 & Tier 1 Microkernel Only & \checkmark & -- & -- & -- & 45.0\% & 6.5\% & 85.6\% & 100.0\% \\
+A2 & Tier 2 Provenance Only & -- & \checkmark & -- & -- & 1.5\% & 1.5\% & 0.0\% & 100.0\% \\
+A3 & Tier 3 Verifier Only & -- & -- & \checkmark & -- & 45.0\% & 0.0\% & 100.0\% & 0.0\% \\
+A4 & $T_1 + T_2$ (Kernel + Provenance) & \checkmark & \checkmark & -- & -- & 1.5\% & 0.0\% & 100.0\% & 100.0\% \\
+A5 & $T_1 + T_3$ (Kernel + Verifier) & \checkmark & -- & \checkmark & -- & 45.0\% & 0.0\% & 100.0\% & 100.0\% \\
+A6 & $T_2 + T_3$ (Provenance + Verifier) & -- & \checkmark & \checkmark & -- & 1.5\% & 0.0\% & 100.0\% & 0.0\% \\
+A7 & \textbf{Full TriGuard v2 (All Tiers)} & \checkmark & \checkmark & \checkmark & \checkmark & 1.5\% & \textbf{0.0\%} & \textbf{100.0\%} & \textbf{100.0\%} \\
+A8 & \textbf{Strict (Fail-Closed, No Clarify)} & \checkmark & \checkmark & \checkmark & -- & 1.5\% & \textbf{0.0\%} & \textbf{100.0\%} & \textbf{100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table*}

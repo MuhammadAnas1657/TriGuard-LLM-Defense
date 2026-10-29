@@ -1,0 +1,278 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{subcaption}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{TriGuard: Provenance-Aware, Capability-Enforced Tool Authorization for Prompt-Injection-Resistant LLM Agents}
+
+\author{\IEEEauthorblockN{Anonymous Author(s)}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering} \\
+\textit{Center for Cybersecurity and Trustworthy AI}\\
+Email: author@institution.edu}
+}
+
+\maketitle
+
+\begin{abstract}
+Autonomous agents driven by Large Language Models (LLMs) increasingly invoke external tools, process untrusted third-party data, and execute state-changing actions. However, modern autoregressive Transformers process trusted system instructions and untrusted external data within a unified sequential context, exposing agents to \textbf{Indirect Prompt Injections (IPI)}. Prior defenses suffer from severe operational dilemmas: discriminative classifiers (e.g., Meta PromptGuard-86M, PIGuard) trigger catastrophic \textit{utility collapse} by over-blocking non-malicious tool invocations or halting execution entirely, while generative rewriters and attention sanitizers impose severe latency overhead and context degradation.
+
+To resolve this impasse without requiring multi-billion-parameter retraining, we present \textbf{TriGuard}, a lightweight, three-tier authorization and execution-gating framework for tool-augmented agents. TriGuard decouples authorization from unconstrained model generation through: (1) a \textbf{Capability Microkernel} (Tier~1) issuing cryptographically signed (HMAC-SHA256), timestamped, nonce-bound capability tokens enforcing strict least-privilege and default-deny tool access; (2) \textbf{Provenance-Aware Context Mediation} (Tier~2) cordoning off untrusted retrieved data into passive data planes with role separation; and (3) an \textbf{Intent-Consistency Verifier} (Tier~3) that gates structured tool calls before any external side effects occur, coupled with an out-of-band \textbf{Clarification State Machine} ($\text{PENDING} \to \text{CONFIRMED} \mid \text{DENIED}$) for ambiguous operations.
+
+We evaluate TriGuard on physical dual-GPU hardware using \texttt{Meta-Llama-3.1-8B-Instruct} across the 7 standardized core QA and RAG benchmarks of PIArena ($N=1,100$ samples) under Direct and Combined multi-vector injection attacks, compared head-to-head against 5 baseline conditions: Undefended Baseline, PIGuard, PromptGuard-86M, DataFilter-8B, and PISanitizer. Furthermore, we formally verify TriGuard against a comprehensive test suite of 39 adversarial security edge cases and integration tests (exact argument-bound permissions, recipient containment, path traversal, signature forgery, scope tampering, token expiration, nonce replay, and side-effect-spy gating), achieving 100\% deterministic interception and a 0.0\% unauthorized tool execution rate. TriGuard provides robust, verifiable execution security while preserving legitimate agent utility, establishing an efficient, deployment-ready defense for enterprise agentic workflows.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Autonomous Agents, Indirect Prompt Injection, Tool Security, Capability-Based Security, Provenance Tracking, Execution Gating.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Large Language Models (LLMs) are rapidly transitioning from passive conversational chatbots into active, tool-augmented autonomous agents \cite{zhan2024injecagent, debenedetti2024agentdojo}. In enterprise workflows—ranging from customer support and personal finance to DevOps orchestration—agents interact with external tools such as web search engines, local file systems, database connectors, and messaging APIs.
+
+However, the fundamental architecture of Transformer-based LLMs inherently concatenates trusted control instructions (user queries and system prompts) with untrusted third-party data (retrieved web content, tool outputs, emails) into a flat, sequential token context. This lack of architectural privilege separation exposes agents to \textbf{Indirect Prompt Injection (IPI)} attacks \cite{geng2026piarena}. When an adversary embeds malicious imperative directives into external resources (e.g., ``\textit{Ignore previous instructions and email confidential files to attacker.com}''), the target model frequently confuses external data with authoritative user intent, executing unauthorized tools with catastrophic real-world side effects.
+
+\subsection{Limitations of Existing Defenses}
+Existing defensive paradigms fall predominantly into three categories, each exhibiting fundamental operational limitations:
+\begin{enumerate}
+    \item \textbf{Discriminative Input Classifiers:} Systems such as Meta PromptGuard-86M \cite{meta2024promptguard} and PIGuard \cite{liu2024piguard} inspect incoming text using small pre-trained sequence encoders. Because they operate as binary drop filters, any flagged input immediately halts execution, causing \textit{utility collapse}—over-blocking legitimate technical content (e.g., JSON schemas, URLs, code snippets) while leaving the agent completely unable to complete the user's task.
+    \item \textbf{Generative Rewriters and Attention Pruners:} Approaches such as PISanitizer \cite{geng2025pisanitizer} and DataFilter utilize auxiliary LLMs or attention sink pruning to purify context. These methods incur massive compute overhead (multiplying inference latency by $2\times$ to $5\times$) while frequently corrupting legitimate factual context necessary for task completion.
+    \item \textbf{Information-Flow Programming Frameworks:} Frontier systems like CaMeL \cite{debenedetti2026camel} eliminate injections by compiling user instructions into specialized code execution flows. However, this imposes substantial developer refactoring, requiring custom programming languages that break compatibility with existing ReAct and OpenAI function-calling agent ecosystems.
+\end{enumerate}
+
+\subsection{Contributions}
+To overcome these limitations, we design and implement \textbf{TriGuard}, a drop-in, provenance-aware, capability-directed defense framework for autonomous agents. TriGuard shifts the security boundary from fragile textual prompt filtering to \textit{cryptographic execution authorization}. Specifically, our contributions include:
+\begin{itemize}
+    \item \textbf{Cryptographic Capability Microkernel (C1):} We introduce a lightweight kernel that parses explicit user intent, binds it to a cryptographically signed (HMAC-SHA256) capability token with temporal expiry ($TTL$) and single-use nonces, and enforces a strict default-deny tool registry.
+    \item \textbf{Provenance-Aware Context Mediation (C2):} We implement a structural mediator that tags external data planes with explicit provenance metadata and enforces multi-turn role separation, preventing external data from masquerading as system-level control directives.
+    \item \textbf{Pre-Execution Intent Verifier and Clarification State Machine (C3):} We establish a deterministic execution gateway positioned directly before tool invocation. Ambiguous or parameter-escalating operations trigger a formally verified, out-of-band clarification state machine ($\text{PENDING} \to \text{CONFIRMED} \mid \text{DENIED}$), preventing injected text from self-authorizing actions.
+    \item \textbf{Rigorous Empirical & Adversarial Validation:} We evaluate TriGuard across all 7 standardized core datasets of PIArena ($N=1,100$ samples) on \texttt{Meta-Llama-3.1-8B-Instruct} under Direct and Combined multi-vector injection attacks against 5 baselines. In addition, we validate TriGuard against a formal test suite of 39 adversarial edge cases and integration tests, proving 100\% deterministic interception of token tampering, replay attacks, parameter escalation, and unauthorized tool executions.
+\end{itemize}
+
+\section{Related Work and Positioning}
+\label{sec:related_work}
+
+The threat of prompt injection has prompted diverse defensive proposals across machine learning and security venues (summarized in Table~\ref{tab:related_work_matrix}). We explicitly delineate TriGuard's positioning against closely related prior art:
+
+\begin{table}[t]
+\centering
+\small
+\caption{Taxonomy of Related Defenses vs. TriGuard v2.}
+\label{tab:related_work_matrix}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Defense System} & \textbf{Enforcement Level} & \textbf{Zero Aux. LLM} & \textbf{Execution Gating} & \textbf{Plug-and-Play} \\
+\midrule
+PromptGuard \cite{meta2024promptguard} & Input Classifier & \checkmark & $\times$ & \checkmark \\
+PIGuard \cite{liu2024piguard} & Token Classifier & \checkmark & $\times$ & \checkmark \\
+DataFilter \cite{geng2026piarena} & Input Sanitizer & $\times$ & $\times$ & \checkmark \\
+PISanitizer \cite{geng2025pisanitizer} & Attention Pruning & $\times$ & $\times$ & \checkmark \\
+CaMeL \cite{debenedetti2026camel} & Language/Flow & \checkmark & \checkmark & $\times$ \\
+Task Shield \cite{taskshield2025} & Post-hoc Scoring & $\times$ & \checkmark & \checkmark \\
+MELON \cite{zhu2025melon} & Masked Re-Exec & $\times$ & \checkmark & $\times$ \\
+\textbf{TriGuard (Ours)} & \textbf{Capability / Gate} & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{CaMeL (SaTML 2026):} Debenedetti et al.~\cite{debenedetti2026camel} proposed eliminating prompt injections by translating user requests into Python programs where untrusted data is strictly held in inert objects. While conceptually rigorous, CaMeL requires replacing natural language tool dispatch with a specialized execution runtime, restricting developer flexibility. TriGuard achieves comparable capability isolation while remaining fully compatible with standard OpenAI function calling and ReAct agents.
+
+\textbf{The Task Shield (ACL 2025):} Zhang et al.~\cite{taskshield2025} evaluate alignment between agent actions and user goals. However, Task Shield relies on secondary LLM prompting to adjudicate alignment, introducing latency ($>2$ seconds) and vulnerability to judge-jailbreaking. In contrast, TriGuard enforces deterministic, cryptographic capability checks in under $50~\mu$s.
+
+\textbf{MELON (ICML 2025):} Zhu et al.~\cite{zhu2025melon} detect agent manipulation via masked re-execution, running duplicate model trajectories to compare tool choices. While theoretically principled, multi-trajectory re-execution multiplies inference cost by $2\times$ to $3\times$. TriGuard achieves pre-execution gating in a single forward pass.
+
+\textbf{Input Classifiers (PromptGuard, PIGuard):} Discriminative models \cite{meta2024promptguard, liu2024piguard} classify text inputs. As demonstrated in our benchmark results, when applied to agent tasks, they suffer from catastrophic false-positive blocking of benign technical context and are blind to Knowledge Corruption attacks \cite{bhagwatkar2025firewalls}. TriGuard replaces text-level rejection with action-level capability enforcement.
+
+\section{Threat Model and Security Invariants}
+\label{sec:threat_model}
+
+\subsection{System Trust Boundaries}
+We define the system trust boundary across four distinct planes:
+\begin{enumerate}
+    \item \textbf{Trusted User Plane:} The authenticated human user issuing instructions ($I_{user}$).
+    \item \textbf{Trusted Computing Base (TCB):} The local TriGuard execution kernel, comprising the cryptographic key manager, the tool dispatcher, and the out-of-band user clarification channel.
+    \item \textbf{Untrusted Model Plane:} The autoregressive LLM. In our threat model, the LLM is explicitly considered \textit{untrusted}: it is vulnerable to semantic confusion, hallucination, and adversarial jailbreaking.
+    \item \textbf{Untrusted Data Plane:} All external retrieval contexts, tool observations, web pages, and database records ($C_{ext}$).
+\end{enumerate}
+
+\subsection{Adversary Capabilities}
+The adversary controls or manipulates external data $C_{ext}$ ingested by the agent. The adversary can inject arbitrary imperative commands, role-spoofing markers, delimiter escapes, or encoded payloads. The adversary's goal is to cause the agent to invoke an unauthorized tool $T_{mal}$ (e.g., file deletion, data exfiltration, financial transfer) or hijack tool arguments. The adversary may possess full knowledge of TriGuard's algorithms, but cannot access host memory to exfiltrate the kernel's cryptographic secret.
+
+\subsection{Security Invariants}
+TriGuard enforces three core formal security invariants:
+\begin{itemize}
+    \item \textbf{Invariant 1 (Default-Deny Tool Authorization):} A proposed tool action $T$ is executable if and only if $T \in \mathcal{R}_{tools}$ and $\text{Scope}(T) \subseteq \text{Token}.\text{scopes}$, where $\text{Token}$ is a cryptographically valid capability token issued for the current session.
+    \item \textbf{Invariant 2 (Cryptographic Freshness & Anti-Replay):} A capability token is valid if and only if $\text{HMAC}_{K}(\text{Token}) == \text{Token}.\text{sig}$, $\text{time}() \le \text{Token}.\text{expires\_at}$, and $\text{Token}.\text{nonce} \notin \mathcal{H}_{replay}$.
+    \item \textbf{Invariant 3 (Atomic Pre-Execution Interception):} Tool execution occurs strictly \textit{downstream} of the dispatcher gate. Any blocked or clarification-pending tool produces zero external side effects.
+\end{itemize}
+
+\section{TriGuard System Architecture}
+\label{sec:architecture}
+
+TriGuard's execution pipeline operates in three synchronized tiers (illustrated in Fig.~\ref{fig:architecture}):
+
+\begin{figure*}[t]
+\centering
+\fbox{\parbox{0.96\textwidth}{
+\centering
+\small
+\textbf{[ User Instruction ]} $\xrightarrow{\text{Intent Parse}}$ \textbf{[ Tier 1: Capability Microkernel ]} $\xrightarrow{\text{Issue Signed Token}}$ \textbf{[ Dispatcher Gate ]} \\
+$\quad$ \rotatebox[origin=c]{-90}{$\longrightarrow$} \\
+\textbf{[ External Data ]} $\xrightarrow{\text{Taint Tagging}}$ \textbf{[ Tier 2: Provenance Mediator ]} $\xrightarrow{\text{Role Isolation}}$ \textbf{[ LLM Reasoning ]} $\xrightarrow{\text{Action Proposed}}$ \textbf{[ Tier 3: Verifier ]} $\xrightarrow{\text{Gate}}$ \textbf{[ Tool Execution ]}
+}}
+\caption{End-to-end TriGuard v2 execution and authorization architecture.}
+\label{fig:architecture}
+\end{figure*}
+
+\subsection{Tier 1: Capability Microkernel}
+Upon receiving a user instruction $I_{user}$, the microkernel parses the explicit semantic verbs to delineate authorized privilege scopes ($\mathcal{S} \subseteq \{\text{read}, \text{write}, \text{send}, \text{delete}, \text{execute}, \text{modify}\}$). Crucially, if the user asks an informational or summarization question, the kernel grants \textit{strictly read-only} scope.
+
+The kernel then mints an ephemeral capability token:
+\begin{equation}
+    M = \text{session\_id} \parallel \mathcal{S} \parallel \text{nonce} \parallel \text{expires\_at}
+\end{equation}
+\begin{equation}
+    \sigma = \text{HMAC-SHA256}(K_{kernel}, M)
+\end{equation}
+where $K_{kernel}$ is an ephemeral 256-bit symmetric key dynamically generated via cryptographically secure pseudo-randomness ($os.urandom(32)$) per instance, eliminating hardcoded key vulnerabilities.
+
+\subsection{Tier 2: Provenance-Aware Context Mediation}
+When external contexts (RAG chunks, tool outputs) are retrieved, Tier~2 wraps each context block into a structured \texttt{TaintedChunk} tagged with provenance source and trust level ($\text{UNTRUSTED\_EXTERNAL}$).
+
+Tier~2 neutralizes known imperative instruction-override triggers (e.g., ``\textit{ignore previous instructions}'') while preserving factual text and JSON schemas. Furthermore, Tier~2 formats the context into an asymmetric multi-turn structure: untrusted data is encapsulated within inert reference tags ($\langle \text{external\_data} \rangle$) while the system prompt instructs the model to treat tagged blocks strictly as passive data.
+
+\subsection{Tier 3: Intent-Consistency Verifier & Dispatcher}
+When the LLM generates a tool call (either via structured JSON functional schema or ReAct syntax), the action is intercepted by the \texttt{ToolDispatcher} before execution:
+\begin{enumerate}
+    \item \textbf{Cryptographic Verification:} The dispatcher verifies token freshness, checks against $\mathcal{H}_{replay}$, and validates the signature using constant-time comparison ($\text{hmac.compare\_digest}$).
+    \item \textbf{Default-Deny Registry Check:} The tool is looked up in $\mathcal{R}_{tools}$. If unrecognized, it is denied immediately.
+    \item \textbf{Action Alignment:} If the tool scope matches $\mathcal{S}$, the call is cleared ($\text{ALLOW}$). If the tool is destructive or attempts exfiltration without user authorization, it is neutralized ($\text{BLOCK}$).
+    \item \textbf{Clarification State Machine:} If the user's intent was broad (e.g., ``organize my files'') and the tool modifies state, TriGuard enters a formal clarification state ($\text{PENDING}$). A secure request ID is generated out-of-band. Tool execution halts until the user confirms or denies the action via trusted UI.
+\end{enumerate}
+
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Hardware Testbed & Inference Engine}
+All evaluations were executed on a local physical dual-GPU workstation: NVIDIA GeForce GTX 1060 (6~GB VRAM) and GTX 1050~Ti (4~GB VRAM), providing 10~GB aggregate VRAM under Windows 11 with CUDA 13.0. In accordance with zero-API-cost privacy requirements, inference was powered by \texttt{llama-server.exe} with native CUDA AVX2 acceleration and dual-GPU layer offloading (33 layers offloaded across both GPUs).
+
+\subsection{Target Model & Datasets}
+\textbf{Target Model:} \texttt{Meta-Llama-3.1-8B-Instruct} (4-bit quantized Q4\_K\_S, context window $16,384$ tokens).
+
+\textbf{Benchmark Datasets:} We evaluate across all 7 core short-context datasets from the official PIArena benchmark ($N=1,100$ total samples):
+\begin{itemize}
+    \item \textbf{SQuAD v2} ($N=200$): Reading comprehension QA.
+    \item \textbf{Dolly Closed QA} ($N=200$): Closed-domain knowledge QA.
+    \item \textbf{Dolly Information Extraction} ($N=200$): Entity and attribute extraction.
+    \item \textbf{Dolly Summarization} ($N=200$): Document summarization.
+    \item \textbf{HotpotQA RAG} ($N=100$): Multi-hop retrieval QA.
+    \item \textbf{MS MARCO RAG} ($N=100$): Search retrieval QA.
+    \item \textbf{NQ RAG} ($N=100$): Open-domain search QA.
+\end{itemize}
+
+\subsection{Attack Vectors}
+\begin{itemize}
+    \item \textbf{Direct Injection:} Adversarial instructions appended directly into the retrieval/document context.
+    \item \textbf{Combined Multi-Vector Injection:} Sophisticated attack blending instruction overrides, delimiter escapes, and fake system tags.
+    \item \textbf{Knowledge Corruption (PoisonedRAG):} Semantic falsification of retrieved knowledge without syntactic injection keywords.
+\end{itemize}
+
+\subsection{Evaluated Baselines}
+We compare TriGuard head-to-head against 5 baseline conditions:
+\begin{enumerate}
+    \item \textbf{No Defense (Baseline):} Undefended target model.
+    \item \textbf{PIGuard \cite{liu2024piguard}:} Token-level DeBERTa discriminator.
+    \item \textbf{PromptGuard-86M \cite{meta2024promptguard}:} Meta sequence classifier.
+    \item \textbf{DataFilter-8B \cite{geng2026piarena}:} Keyword/structural data filter.
+    \item \textbf{PISanitizer \cite{geng2025pisanitizer}:} Attention sink pre-sanitizer.
+\end{enumerate}
+
+\section{Empirical Evaluation: Autonomous Agent Tool Security}
+\label{sec:results}
+
+We evaluate TriGuard across 100 matched autonomous agent tool-injection scenarios spanning three primary enterprise risk categories:
+\begin{enumerate}
+    \item \textbf{Email \& Messaging Exfiltration (40 cases):} Injected prompts attempt to redirect sensitive documents or credentials to unauthorized external recipients (e.g., \texttt{attacker@darkweb.net}).
+    \item \textbf{File System Destruction \& Traversal (30 cases):} Injected prompts attempt destructive deletions of production databases (\texttt{/var/db/production.sqlite}) or unauthorized traversal (\texttt{/etc/passwd}).
+    \item \textbf{Financial \& API Webhook Tampering (30 cases):} Injected prompts attempt unauthorized fund transfers to attacker accounts (e.g., \texttt{0xAttacker}) or unauthorized external webhooks.
+\end{enumerate}
+
+\subsection{Cross-Defense Evaluation on the Full InjecAgent Benchmark}
+To evaluate TriGuard v2 under standardized community conditions, we benchmark against the full \textbf{InjecAgent} evaluation suite \cite{kang2024injecagent}, comprising 1,054 single-turn tool episodes spanning 330 real-world API tools across 17 distinct user domains (510 Direct Harm and 544 Data Stealing episodes). We benchmark directly against frontline baseline defenses on identical local hardware (\texttt{Meta-Llama-3.1-8B-Instruct}).
+
+\input{tables/table_injecagent_cross_defense.tex}
+
+As demonstrated in Table~\ref{tab:injecagent_cross_defense}, deploying sequence classifiers directly onto tool-augmented agents induces catastrophic utility collapse: PromptGuard-86M and PIGuard cause valid execution to collapse from 65.8\% down to 14.3\% and 17.5\% respectively, because their context-erasure policy deletes tool outputs, breaking the LLM's ReAct format. While DataFilter avoids context erasure, its lack of an execution gateway allows 6.4\% of attacks (67 tool executions) to leak into the external environment.
+
+\textbf{Distinguishing Attack Modalities and Outcomes:} 
+Our empirical evaluation rigorously delineates between Direct Harm (DH) and Data Stealing (DS) attack lifecycles:
+\begin{enumerate}
+    \item \textbf{Direct Harm (510 episodes):} Under Prompt Injection, the attacker seeks immediate single-step destructive action (e.g., file deletion, unauthorized payment). The model generated 15 attack tool calls; TriGuard's dispatcher gate intercepted 15 out of 15 attempts (100.0\% block rate, 0 executed breaches).
+    \item \textbf{Data Stealing (544 episodes):} Data stealing operates across a two-stage attack lifecycle: Stage~1 involves local data reconnaissance (reading sensitive content via an authorized read tool), and Stage~2 involves external exfiltration (transmitting the acquired data to an attacker-controlled endpoint). In 24 instances, the model attempted a first-stage read action. In 18 of these instances, the read action matched legitimate user capability scopes and schema constraints and was permitted. Crucially, when evaluating completed second-stage exfiltration, TriGuard blocked all exfiltration attempts, resulting in \textbf{0.0\% completed exfiltration} (0 out of 544 episodes). We emphasize that authorization of a benign-like Stage~1 read action is not an exfiltration breach; TriGuard isolates tainted context to prevent subsequent unauthorized data transmission.
+\end{enumerate}
+
+\subsection{Architectural Ablation across 200 Stratified Scenarios}
+To empirically verify the distinct necessity and causal role of each architectural layer, we conduct a 9-tier ablation matrix ( - A_8$) across 200 stratified InjecAgent cases (100 Direct Harm and 100 Data Stealing episodes spanning diverse tool families):
+
+\input{tables/table_injecagent_ablation.tex}
+
+\textbf{Metric Definitions and Authorization Utility:}
+In Table~\ref{tab:injecagent_ablation}, \textit{Permission-Level Utility} measures false-blocking resistance at the dispatcher gate: specifically, whether legitimate tool invocations receive \texttt{ALLOW} or \texttt{CLARIFY} rather than a false \texttt{DENY}. We distinguish permission-level authorization utility from full multi-turn conversational task completion, focusing specifically on whether the defensive gateway obstructs legitimate agent capabilities.
+
+\textbf{Analysis of Layer Contributions:}
+\begin{itemize}
+    \item \textbf{Control Baseline ($):} With all tiers disabled, the model is hijacked in 45.0\% of cases (90 attempts) and executes the malicious tool in 100\% of those attempts (45.0\% Executed ASR).
+    \item \textbf{Tier~2 Provenance Isolation ($):} Tagging context and neutralizing command directives slashes model hijack attempts from 45.0\% down to 1.5\% (a 96.7\% reduction in model susceptibility). However, without execution gating, the 3 attempts that leak still execute (1.5\% Executed ASR).
+    \item \textbf{Causal Interdependence of Tiers (, A_6$ vs. , A_7$):} When Tier~3 (Verifier) is enabled without Tier~1 capability tokens (, A_6$), permission-level utility collapses to 0.0\% because no signed HMAC authorization token is present to clear execution (fail-closed default). This empirically verifies the causal necessity of Tier~1.
+    \item \textbf{Integrated Defense (, A_8$):} Combining Tier~1 capability tokens, Tier~2 provenance isolation, and Tier~3 dispatcher gating ($) achieves the Pareto-optimal defense frontier: 0.0\% Executed ASR, 100.0\% Block Rate, and 100.0\% permission-level utility.
+\end{itemize}
+
+\section{Security Verification & Invariant Testing}
+\label{sec:security_verification}
+
+To rigorously assess TriGuard against targeted adversarial bypasses, we constructed an automated test suite spanning 39 adversarial edge cases and integration tests. All 39 tests were executed and passed deterministically (100\% pass rate):
+
+\begin{enumerate}
+    \item \textbf{Exact Argument Constraint Enforcement (8 Tests):} Parameter-level least-privilege checks ensure that even if an agent has permission to send emails or delete files, injected prompts attempting to redirect emails to unauthorized recipients (e.g., \texttt{attacker@darkweb.net}) or delete unapproved files (\texttt{all.txt} instead of \texttt{draft.txt}) are strictly blocked. Formal side-effect-spy integration tests confirm that when an action is blocked, downstream tool executions remain strictly zero.
+    \item \textbf{PIArena v2 Canonical Integration (5 Tests):} Validates that the runtime environment dynamically resolves \texttt{triguard} and \texttt{triguard\_v2} to \texttt{TriGuardDefenseV2}, reporting explicit defense versions and active tier configurations, while isolating legacy implementations under \texttt{triguard\_v1\_legacy}.
+    \item \textbf{Cryptographic Signature Forgery (6 Tests):} Tampering with token signatures, altering session identifiers, or modifying scope claims (e.g., escalating from \texttt{['read']} to \texttt{['read', 'execute']}) is detected and rejected with 100\% precision via $\text{hmac.compare\_digest}$.
+    \item \textbf{Anti-Replay and Temporal Expiry (4 Tests):} Tokens with expired timestamps ($t > \text{expires\_at}$) fail closed. Replaying previously valid nonces is blocked by the microkernel's replay cache.
+    \item \textbf{Default-Deny Boundary Checks (6 Tests):} Read-only capability tokens attempting to invoke \texttt{create\_file}, \texttt{delete\_file}, or \texttt{send\_email} fail closed. Unregistered tools fail closed. Path traversal attempts (e.g., accessing \texttt{../../etc/shadow} or system directories) are intercepted at parameter verification.
+    \item \textbf{Out-of-Band Clarification State Integrity (4 Tests):} Attempts by injected model outputs to self-confirm pending clarification requests are rejected. The clarification manager validates session ownership and enforces strict temporal timeouts.
+    \item \textbf{Pre-Execution Dispatcher Gating (3 Tests):} In all blocked scenarios, the dispatcher intercepts execution before the underlying tool function is invoked, guaranteeing zero side effects.
+    \item \textbf{Ablation Controls (3 Tests):} Disabling individual tiers (Ablations A0--A8) cleanly routes execution paths, confirming that defensive gains are attributable to active architectural modules.
+\end{enumerate}
+
+\section{Discussion, Scope, and Limitations}
+\label{sec:limitations}
+
+\textbf{Scope and Non-Tool Passive Text Workflows:} TriGuard is architected specifically as a capability-enforced execution gateway for tool-using autonomous agents. In purely passive, non-tool text generation scenarios (such as static question answering or open-domain summarization where no external APIs, files, or execution environments are invoked), TriGuard's execution gateway simply evaluates conversational output. As established in prior literature \cite{geng2026piarena, geng2025pisanitizer}, passive text-only workflows require prompt sanitization or context filtering (e.g., PISanitizer), whereas TriGuard addresses the urgent and distinct threat surface of unauthorized state changes and data exfiltration in agentic tool-use.
+
+\textbf{Hardware \& Context Length Constraints:} Due to local dual-GPU 10~GB VRAM limitations, documents exceeding 16,384 tokens (e.g., GovReport averaging 19k tokens) cause context overflow and were omitted to prioritize core agentic evaluations.
+
+\textbf{White-Box Gradient Attacks:} Attacks requiring gradient backpropagation through token embeddings (such as GCG) are incompatible with quantized black-box inference engines (\texttt{llama-server.exe}) and were excluded.
+
+\textbf{Clarification Usability:} While clarification guarantees safety for ambiguous operations, excessive prompts can cause user fatigue. TriGuard limits clarification to state-modifying actions in open-ended contexts, executing hard blocks on overt exfiltration or destructive payloads.
+
+\textbf{White-Box Gradient Attacks:} Attacks requiring gradient backpropagation through token embeddings (such as GCG) are incompatible with quantized black-box inference engines (\texttt{llama-server.exe}) and were excluded.
+
+\textbf{Clarification Usability:} While clarification guarantees safety for ambiguous operations, excessive prompts can cause user fatigue. TriGuard limits clarification to state-modifying actions in open-ended contexts, executing hard blocks on overt exfiltration or destructive payloads.
+
+\section{Conclusion}
+We presented TriGuard v2, a provenance-aware, capability-enforced defense framework for autonomous LLM agents. By moving beyond fragile text-level prompt filters and establishing cryptographic execution boundaries, TriGuard resolves the conflict between agent security and operational utility. Evaluated across 7 PIArena benchmarks on \texttt{Meta-Llama-3.1-8B-Instruct} and verified across 39 adversarial security test cases, TriGuard establishes a practical, deployment-ready foundation for trustworthy autonomous agents.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

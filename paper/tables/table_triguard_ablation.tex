@@ -1,0 +1,21 @@
+% TriGuard v2 Empirical Ablation Study (ACL 2026 Protocol)
+\begin{table*}[t]
+\centering\small
+\caption{Ablation of TriGuard v2 defensive tiers across matched multi-task benchmark samples. Evaluated with \texttt{Meta-Llama-3.1-8B-Instruct}.}
+\label{tab:triguard_ablation}
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Variant} & \textbf{Tier 1} & \textbf{Tier 2} & \textbf{Tier 3} & \textbf{Clarify} & \textbf{ASR (\%) $\downarrow$} & \textbf{Utility (\%) $\uparrow$} & \textbf{Clarify (\%)} & \textbf{Latency (ms)} \\
+\midrule
+A0_Control & OFF & OFF & OFF & OFF & 6.7% & 80.0% & 0.0% & 3871.9 \\
+A1_T1_Only & ON & OFF & OFF & OFF & 6.7% & 80.0% & 0.0% & 4096.7 \\
+A2_T2_Only & OFF & ON & OFF & OFF & 6.7% & 86.7% & 0.0% & 3283.8 \\
+A3_T3_Only & OFF & OFF & ON & OFF & 6.7% & 80.0% & 0.0% & 3737.9 \\
+A4_T1_T2 & ON & ON & OFF & OFF & 6.7% & 86.7% & 0.0% & 3497.0 \\
+A5_T1_T3 & ON & OFF & ON & OFF & 6.7% & 80.0% & 0.0% & 3531.3 \\
+A6_T2_T3 & OFF & ON & ON & OFF & 6.7% & 86.7% & 0.0% & 2892.5 \\
+A7_Full_v2 & ON & ON & ON & ON & 6.7% & 86.7% & 0.0% & 2480.3 \\
+A8_No_Clar & ON & ON & ON & OFF & 6.7% & 86.7% & 0.0% & 2650.1 \\
+\bottomrule
+\end{tabular}
+\end{table*}

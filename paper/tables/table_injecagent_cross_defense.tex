@@ -1,0 +1,21 @@
+% Auto-generated Master Cross-Defense Comparison Table on InjecAgent (ENHANCED)
+% Cryptographically verified against results/baselines/injecagent/ and results/real/injecagent/
+\begin{table*}[t]
+\centering
+\small
+\caption{Empirical Cross-Defense Evaluation on the Full InjecAgent Benchmark (1,054 Episodes, 330 Real-World API Tools, \texttt{Meta-Llama-3.1-8B-Instruct}). All metrics are directly calculated from saved evaluation logs without imputation. Executed ASR measures completed malicious actions. In Direct Harm (510 cases), TriGuard intercepts 15/15 attack attempts (0 breaches). In Data Stealing (544 cases), while 18 first-stage benign-schema reconnaissance reads are authorized, 0 second-stage exfiltration actions succeed, yielding 0.0\% completed exfiltration.}
+\label{tab:injecagent_cross_defense}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Defense Mechanism} & \textbf{Valid Format (\%)} & \textbf{DH Attempt (\%)} & \textbf{DS Attempt (\%)} & \textbf{Total Attempt (\%)} & \textbf{Executed ASR (\%)} & \textbf{Block Rate (\%)} \\
+\midrule
+Undefended (No Defense)    & 65.8\% & 88.3\% & 75.3\% & 81.9\% & 81.9\% & 0.0\% \\
+PromptGuard-86M            & 14.3\% & 3.1\%  & 5.2\%  & 4.3\%  & 4.3\%  & 77.5\% \\
+PIGuard (DeBERTa-v2)       & 17.5\% & 2.5\%  & 2.2\%  & 2.3\%  & 2.3\%  & 83.8\% \\
+DataFilter (8B Filter)     & 36.0\% & 9.5\%  & 2.9\%  & 6.4\%  & 6.4\%  & 0.0\% \\
+PISanitizer                & 42.1\% & 41.5\% & 26.1\% & 33.8\% & 33.8\% & 0.0\% \\
+\midrule
+\textbf{TriGuard v2 (Ours)} & \textbf{66.9\%} & \textbf{2.9\%} & \textbf{0.2\%} & \textbf{1.5\%} & \textbf{0.0\%} & \textbf{100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table*}
