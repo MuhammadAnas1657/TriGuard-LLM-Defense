@@ -1,0 +1,12 @@
+Hardware and Environment Audit Specification:
+OS: Windows 11 (10.0.26200)
+Python Version: 3.12.14 | packaged by Anaconda, Inc. | (main, Aug 27 2026, 14:37:13) [MSC v.1942 64 bit (AMD64)]
+PyTorch Version: 2.6.0+cu124
+CUDA Available: True
+CUDA Version: 12.4
+GPU Device 0: NVIDIA GeForce RTX 3060 (12288 MB VRAM)
+Local LLM Host: http://127.0.0.1:8000/v1 (llama-server.exe)
+Local LLM Model: Meta-Llama-3.1-8B-Instruct-Q4_K_S.gguf
+Context Window: 16,384 tokens
+Inference Temperature: 0.0 (Strictly deterministic)
+Random Seed: 42

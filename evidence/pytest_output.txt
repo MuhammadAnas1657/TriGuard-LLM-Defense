@@ -1,0 +1,49 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- C:\Users\pc\miniconda3\envs\torch_py312\python.exe
+cachedir: .pytest_cache
+rootdir: E:\project\hackathon and journal paper\TriGuard_v2
+configfile: pyproject.toml
+plugins: anyio-4.15.1, langsmith-0.14.5
+collecting ... collected 39 items
+
+TriGuard_v2\tests\test_argument_constraints.py::test_authorized_email_succeeds PASSED [  2%]
+TriGuard_v2\tests\test_argument_constraints.py::test_unauthorized_email_recipient_blocked PASSED [  5%]
+TriGuard_v2\tests\test_argument_constraints.py::test_unauthorized_bcc_exfiltration_blocked PASSED [  7%]
+TriGuard_v2\tests\test_argument_constraints.py::test_authorized_file_deletion_succeeds PASSED [ 10%]
+TriGuard_v2\tests\test_argument_constraints.py::test_unauthorized_file_deletion_blocked PASSED [ 12%]
+TriGuard_v2\tests\test_argument_constraints.py::test_path_traversal_blocked PASSED [ 15%]
+TriGuard_v2\tests\test_argument_constraints.py::test_tampered_constraints_rejected PASSED [ 17%]
+TriGuard_v2\tests\test_argument_constraints.py::test_side_effect_spy_zero_execution PASSED [ 20%]
+TriGuard_v2\tests\test_clarification.py::test_request_lifecycle_confirm PASSED [ 23%]
+TriGuard_v2\tests\test_clarification.py::test_request_lifecycle_deny PASSED [ 25%]
+TriGuard_v2\tests\test_clarification.py::test_session_spoofing_prevented PASSED [ 28%]
+TriGuard_v2\tests\test_clarification.py::test_request_timeout PASSED     [ 30%]
+TriGuard_v2\tests\test_dispatcher.py::test_unauthorized_tool_never_executes PASSED [ 33%]
+TriGuard_v2\tests\test_dispatcher.py::test_authorized_tool_executes PASSED [ 35%]
+TriGuard_v2\tests\test_dispatcher.py::test_ablation_control_a0 PASSED    [ 38%]
+TriGuard_v2\tests\test_permissions.py::test_readonly_token_blocks_create_file PASSED [ 41%]
+TriGuard_v2\tests\test_permissions.py::test_readonly_token_blocks_delete_file PASSED [ 43%]
+TriGuard_v2\tests\test_permissions.py::test_readonly_token_blocks_send_email PASSED [ 46%]
+TriGuard_v2\tests\test_permissions.py::test_unknown_tool_fails_closed PASSED [ 48%]
+TriGuard_v2\tests\test_permissions.py::test_explicit_authorized_action_succeeds PASSED [ 51%]
+TriGuard_v2\tests\test_permissions.py::test_privileged_path_traversal_blocked PASSED [ 53%]
+TriGuard_v2\tests\test_piarena_integration.py::test_canonical_triguard_resolves_to_v2 PASSED [ 56%]
+TriGuard_v2\tests\test_piarena_integration.py::test_triguard_v2_explicit_resolution PASSED [ 58%]
+TriGuard_v2\tests\test_piarena_integration.py::test_legacy_v1_explicitly_labeled PASSED [ 61%]
+TriGuard_v2\tests\test_piarena_integration.py::test_runtime_identity_reporting PASSED [ 64%]
+TriGuard_v2\tests\test_piarena_integration.py::test_negative_legacy_version_fails_identity_assertion PASSED [ 66%]
+TriGuard_v2\tests\test_provenance.py::test_tag_context_provenance PASSED [ 69%]
+TriGuard_v2\tests\test_provenance.py::test_adversarial_directive_sanitization PASSED [ 71%]
+TriGuard_v2\tests\test_provenance.py::test_role_separated_prompt_structure PASSED [ 74%]
+TriGuard_v2\tests\test_token_security.py::test_valid_token_authorization PASSED [ 76%]
+TriGuard_v2\tests\test_token_security.py::test_forged_signature_rejection PASSED [ 79%]
+TriGuard_v2\tests\test_token_security.py::test_tampered_scopes_rejection PASSED [ 82%]
+TriGuard_v2\tests\test_token_security.py::test_expired_token_rejection PASSED [ 84%]
+TriGuard_v2\tests\test_token_security.py::test_replayed_nonce_rejection PASSED [ 87%]
+TriGuard_v2\tests\test_token_security.py::test_session_mismatch_rejection PASSED [ 89%]
+TriGuard_v2\tests\test_verifier.py::test_conversational_response_allowed PASSED [ 92%]
+TriGuard_v2\tests\test_verifier.py::test_react_unauthorized_action_blocked PASSED [ 94%]
+TriGuard_v2\tests\test_verifier.py::test_structured_json_action_blocked PASSED [ 97%]
+TriGuard_v2\tests\test_verifier.py::test_ambiguous_context_triggers_clarification PASSED [100%]
+
+============================= 39 passed in 11.00s =============================

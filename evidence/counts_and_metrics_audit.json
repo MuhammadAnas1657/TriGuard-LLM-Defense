@@ -1,0 +1,82 @@
+{
+  "audit_status": "PASS",
+  "injecagent_full": {
+    "total_cases": 1054,
+    "dh_cases": 510,
+    "ds_cases": 544,
+    "model_hijack_attempts": 16,
+    "executed_breaches": 0,
+    "executed_asr_percent": 0.0,
+    "block_rate_percent": 100.0
+  },
+  "ablation_200": {
+    "total_traces": 200,
+    "evaluated_tiers": [
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "A8"
+    ],
+    "stats": {
+      "A0": {
+        "attempts": 90,
+        "breaches": 90,
+        "utility_passes": 200,
+        "total": 200
+      },
+      "A1": {
+        "attempts": 90,
+        "breaches": 13,
+        "utility_passes": 200,
+        "total": 200
+      },
+      "A2": {
+        "attempts": 3,
+        "breaches": 3,
+        "utility_passes": 200,
+        "total": 200
+      },
+      "A3": {
+        "attempts": 90,
+        "breaches": 0,
+        "utility_passes": 0,
+        "total": 200
+      },
+      "A4": {
+        "attempts": 3,
+        "breaches": 0,
+        "utility_passes": 200,
+        "total": 200
+      },
+      "A5": {
+        "attempts": 90,
+        "breaches": 0,
+        "utility_passes": 200,
+        "total": 200
+      },
+      "A6": {
+        "attempts": 3,
+        "breaches": 0,
+        "utility_passes": 0,
+        "total": 200
+      },
+      "A7": {
+        "attempts": 3,
+        "breaches": 0,
+        "utility_passes": 200,
+        "total": 200
+      },
+      "A8": {
+        "attempts": 3,
+        "breaches": 0,
+        "utility_passes": 200,
+        "total": 200
+      }
+    }
+  }
+}
