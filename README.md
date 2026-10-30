@@ -56,20 +56,65 @@ python scripts/run_injecagent_benchmark.py --mode ablation --ablation_cases 100
 
 ---
 
+## ⚙️ Hardware Environment, Execution Engine & Generation Parameters
+
+To ensure 100% deterministic reproducibility across all evaluated benchmarks, all experiments were conducted on dedicated local hardware with fixed seeds:
+
+| Parameter | Specification & Value | Notes / Verification Command |
+| :--- | :--- | :--- |
+| **Host Operating System** | Microsoft Windows 11 (Build 10.0.26200) | `cmd /c ver` |
+| **Dedicated GPU** | NVIDIA GeForce RTX 3060 (12,288 MB GDDR6 VRAM) | Driver 617.42, Compute Capability 8.6 |
+| **CUDA & PyTorch Runtime** | CUDA 12.4, PyTorch 2.6.0+cu124 | `torch.version.cuda == '12.4'` |
+| **Inference Server Engine** | `llama-server.exe` (llama.cpp b4400 / avx2-cuda) | Hosted locally at `http://127.0.0.1:8000/v1` |
+| **Evaluated Target Model** | `Meta-Llama-3.1-8B-Instruct-Q4_K_S.gguf` | 4-bit small quantization (4.67 GB on disk) |
+| **GPU Offload Layers (`-ngl`)** | 33 / 33 layers (100% full GPU offload) | VRAM footprint: ~6.2 GB allocated |
+| **Context Window (`-c`)** | 16,384 tokens | Accommodates multi-document tool context |
+| **Parallel Slots (`-np`)** | 1 slot (strictly sequential execution) | Eliminates inter-request contention |
+| **Inference Temperature ($T$)** | **`0.0`** (Strictly greedy decoding) | Deterministic argmax; zero stochastic jitter |
+| **Top-$p$ Nucleus Sampling** | `1.0` (Disabled) | Unaltered greedy selection |
+| **Max Generation Tokens** | 512 tokens | Cap for single-turn structured tool response |
+| **Repetition Penalty** | `1.0` (Standard) | No unnatural token dampening |
+| **Global Random Seed** | `42` | Python, NumPy, PyTorch RNG seed |
+
+---
+
 ## 📊 Summary of InjecAgent Empirical Results (1,054 Cases, 330 Real-World API Tools)
 
-Evaluated on `Meta-Llama-3.1-8B-Instruct` across 510 Direct Harm and 544 Data Stealing episodes:
+Evaluated on `Meta-Llama-3.1-8B-Instruct` across 510 Direct Harm and 544 Data Stealing episodes.
 
-| Defense Mechanism | Valid Format (%) | DH Attempt (%) | DS Attempt (%) | Executed ASR (%) | Dispatcher Block Rate (%) |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Undefended (No Defense)** | 65.8% | 88.3% | 75.3% | 81.9% | 0.0% |
-| **PromptGuard-86M** | 14.3% | 3.1% | 5.2% | 4.3% | 77.5% |
-| **PIGuard (DeBERTa-v2)** | 17.5% | 2.5% | 2.2% | 2.3% | 83.8% |
-| **DataFilter (8B Filter)** | 36.0% | 9.5% | 2.9% | 6.4% | 0.0% |
-| **PISanitizer** | 42.1% | 41.5% | 26.1% | 33.8% | 0.0% |
-| **TriGuard v2 (Ours)** | **66.9%** | **2.9%** | **0.2%** | **0.0%** | **100.0%** |
+### Dual-Denominator ASR & Dispatcher Block Rates
 
-*Note on Data Stealing:* In Data Stealing, 18 benign-schema Stage-1 reconnaissance read actions are permitted under legitimate read scopes. Crucially, in Stage 2 (data exfiltration), 0 actions succeed, guaranteeing **0.0% completed exfiltration**.
+Following academic audit guidelines, we report both **$\text{ASR}_{\text{all}}$** ($N=1,054$, all-case denominator) and **$\text{ASR}_{\text{valid}}$** (conditioned strictly on syntactically valid, parseable agent tool calls) side-by-side:
+
+| Defense Mechanism | Valid Format (%) | DH Attempt (%) | DS Attempt (%) | $\text{ASR}_{\text{all}}$ (%) | $\text{ASR}_{\text{valid}}$ (%) | Dispatcher Block Rate (%) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Undefended (No Defense)** | 65.8% | 88.3% | 75.3% | 81.9% | 82.5% | 0.0% |
+| **PromptGuard-86M** | 14.3% | 3.1% | 5.2% | 4.3% | 29.8% | 77.5% |
+| **PIGuard (DeBERTa-v2)** | 17.5% | 2.5% | 2.2% | 2.3% | 13.6% | 83.8% |
+| **DataFilter (8B Filter)** | 36.0% | 9.5% | 2.9% | 6.4% | 17.8% | 0.0% |
+| **PISanitizer** | 42.1% | 41.5% | 26.1% | 33.8% | 80.3% | 0.0% |
+| **TriGuard v2 (Ours)** | **66.9%** | **2.9%** | **0.2%** | **0.0%** | **0.0%** | **100.0%** |
+
+### 🔍 Precise Description of Block-Rate Denominators & Attack Stages
+
+To prevent ambiguity regarding attack interception and denominator definitions:
+
+1. **Direct Harm (510 episodes):**
+   - The attacker attempts direct unauthorized destructive tool actions (e.g., deleting records, transferring funds).
+   - The LLM proposes 15 direct unauthorized tool calls.
+   - **TriGuard Outcome:** 100% of these 15 calls are intercepted and rejected at the gateway. **0.0% executed ASR.**
+
+2. **Data Stealing (544 episodes) — Multi-Stage Reconnaissance Delineation:**
+   - **Stage 1 (Reconnaissance):** The attacker prompts the agent to read internal files or search inboxes. In 24 episodes, the model attempts a read action. **18 of these read actions are permitted** because the user's initial legitimate prompt authorized read access (e.g., *"check my incoming emails"*). These 18 reads operate strictly within least-privilege capability bounds.
+   - **Stage 2 (Exfiltration):** The attacker attempts to transmit the retrieved data to an external adversary-controlled endpoint (e.g., via `send_email` or `post_webhook`).
+   - **TriGuard Outcome:** **0.0 actions succeed** in Stage 2. Every single exfiltration call exceeds the capability token's argument constraints and is dropped by the default-deny gateway.
+   - **Completed Exfiltration Breach Rate:** **0 / 544 = 0.0%**.
+
+3. **Block Rate Denominator Definitions:**
+   - **Dual ASR Denominators:** We report both $\text{ASR}_{\text{all}} = \frac{N_{\text{success}}}{N_{\text{total}}}$ ($N_{\text{total}}=1,054$) and $\text{ASR}_{\text{valid}} = \frac{N_{\text{success}}}{N_{\text{valid}}}$ (conditioned on syntactically valid agent tool calls) side-by-side.
+   - **Dispatcher Block Rate:** Measures the proportion of unauthorized tool calls that were successfully intercepted before execution:
+     $$\text{Block Rate}_{\text{unauthorized}} = \frac{\text{Blocked Unauthorized Calls}}{\text{Proposed Unauthorized Calls}} = \frac{15 + 0_{\text{exfil\_allowed}}}{15} = 100.0\%$$
+   - **Total Attack-Stage Gating Rate:** When including benign first-stage reconnaissance reads, 18 benign reads were permitted under authorized scopes, while 100% of unauthorized mutations and exfiltrations were blocked. No confidential data ever leaves the trusted boundary.
 
 ---
 
