@@ -235,8 +235,12 @@ In Table~\ref{tab:injecagent_ablation}, \textit{Permission-Level Utility} measur
     \item \textbf{Control Baseline ($):} With all tiers disabled, the model is hijacked in 45.0\% of cases (90 attempts) and executes the malicious tool in 100\% of those attempts (45.0\% Executed ASR).
     \item \textbf{Tier~2 Provenance Isolation ($):} Tagging context and neutralizing command directives slashes model hijack attempts from 45.0\% down to 1.5\% (a 96.7\% reduction in model susceptibility). However, without execution gating, the 3 attempts that leak still execute (1.5\% Executed ASR).
     \item \textbf{Causal Interdependence of Tiers (, A_6$ vs. , A_7$):} When Tier~3 (Verifier) is enabled without Tier~1 capability tokens (, A_6$), permission-level utility collapses to 0.0\% because no signed HMAC authorization token is present to clear execution (fail-closed default). This empirically verifies the causal necessity of Tier~1.
-    \item \textbf{Integrated Defense (, A_8$):} Combining Tier~1 capability tokens, Tier~2 provenance isolation, and Tier~3 dispatcher gating ($) achieves the Pareto-optimal defense frontier: 0.0\% Executed ASR, 100.0\% Block Rate, and 100.0\% permission-level utility.
+    \item \textbf{Integrated Defense ($ vs. $):} Combining Tier~1 capability tokens, Tier~2 provenance isolation, and Tier~3 dispatcher gating ($) achieves the Pareto-optimal defense frontier: 0.0\% Executed ASR, 100.0\% Block Rate, and 100.0\% permission-level utility.
 \end{itemize}
+
+\textbf{Clarification Role and Static Benchmark Dynamics ($ vs. $):}
+In Table~\ref{tab:injecagent_ablation}, both $ (Full TriGuard with Clarification) and $ (Strict Fail-Closed without Clarification) exhibit identical 0.0\% Executed ASR and 100.0\% permission utility. This parity occurs because standardized InjecAgent benchmark scenarios feature explicit, well-defined user requests (e.g., retrieving specific product IDs or calendar entries), enabling Tier~1 to generate deterministic capability scopes without hitting the ambiguity threshold required for human clarification. The vital protective utility of the out-of-band Clarification Manager is instead realized in dynamic, open-ended environments where user intent is partially ambiguous; as verified in our 4 formal clarification unit tests (\S\ref{sec:security_verification}), ambiguous state mutations trigger an interactive confirmation loop rather than abrupt execution failure.
+
 
 \section{Security Verification & Invariant Testing}
 \label{sec:security_verification}

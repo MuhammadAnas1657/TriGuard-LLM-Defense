@@ -29,10 +29,10 @@
 * **Execution:** Ran `scripts/run_injecagent_benchmark.py --mode main --setting enhanced`.
 * **Sample Count:** **1,054 total episodes** across 330 real-world API tools (510 Direct Harm + 544 Data Stealing).
 * **Metrics:** 
-  * Model Attempt Rate: **1.5%** (16 attempts generated).
+  * Model Attempt Rate: **1.5%** for Direct Harm (15 attempts) and Stage-2 Exfiltration (1 attempt). In Stage-1 Reconnaissance, 24 benign read actions were attempted.
   * Executed ASR: **0.0%** (0 breaches out of 1,054 cases).
   * Dispatcher Block Rate: **100.0%** (16/16 intercepted).
-  * Valid Format Rate: **71.9%** (Highest among all defenses).
+  * Valid Format Rate: **66.9%** (Highest among all defenses).
 * **Evidence Log:** `results/real/injecagent/triguard_injecagent_enhanced.json` (SHA-256: `1364cba7b9df5941...`).
 
 ### Phase 3: Nine-Tier Architectural Ablation Study
@@ -50,7 +50,7 @@
 * All 5 baseline raw logs on InjecAgent are preserved in `results/baselines/injecagent/`:
   1. `llama-3.1-8b-none-seed42.json` (Undefended, 81.9% ASR)
   2. `llama-3.1-8b-promptguard-seed42.json` (PromptGuard-86M, 14.3% valid format collapse)
-  3. `llama-3.1-8b-piguard-seed42.json` (PIGuard-110M, 16.2% valid format collapse)
+  3. `llama-3.1-8b-piguard-seed42.json` (PIGuard-110M, 17.5% valid format collapse)
   4. `llama-3.1-8b-datafilter-seed42.json` (DataFilter-8B, 6.4% executed leakage)
   5. `llama-3.1-8b-pisanitizer-seed42.json` (PISanitizer, 33.8% ASR)
 

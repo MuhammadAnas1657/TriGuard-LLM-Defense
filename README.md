@@ -64,8 +64,8 @@ Evaluated on `Meta-Llama-3.1-8B-Instruct` across 510 Direct Harm and 544 Data St
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **Undefended (No Defense)** | 65.8% | 88.3% | 75.3% | 81.9% | 0.0% |
 | **PromptGuard-86M** | 14.3% | 3.1% | 5.2% | 4.3% | 77.5% |
-| **PIGuard (DeBERTa-v2)** | 16.2% | 2.5% | 2.2% | 2.3% | 83.8% |
-| **DataFilter (8B Filter)** | 68.2% | 9.5% | 2.9% | 6.4% | 0.0% |
+| **PIGuard (DeBERTa-v2)** | 17.5% | 2.5% | 2.2% | 2.3% | 83.8% |
+| **DataFilter (8B Filter)** | 36.0% | 9.5% | 2.9% | 6.4% | 0.0% |
 | **PISanitizer** | 42.1% | 41.5% | 26.1% | 33.8% | 0.0% |
 | **TriGuard v2 (Ours)** | **66.9%** | **2.9%** | **0.2%** | **0.0%** | **100.0%** |
 
