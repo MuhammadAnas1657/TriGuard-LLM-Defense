@@ -235,7 +235,16 @@ In Table~\ref{tab:injecagent_ablation}, \textit{Permission-Level Utility} measur
     \item \textbf{Control Baseline ($):} With all tiers disabled, the model is hijacked in 45.0\% of cases (90 attempts) and executes the malicious tool in 100\% of those attempts (45.0\% Executed ASR).
     \item \textbf{Tier~2 Provenance Isolation ($):} Tagging context and neutralizing command directives slashes model hijack attempts from 45.0\% down to 1.5\% (a 96.7\% reduction in model susceptibility). However, without execution gating, the 3 attempts that leak still execute (1.5\% Executed ASR).
     \item \textbf{Causal Interdependence of Tiers (, A_6$ vs. , A_7$):} When Tier~3 (Verifier) is enabled without Tier~1 capability tokens (, A_6$), permission-level utility collapses to 0.0\% because no signed HMAC authorization token is present to clear execution (fail-closed default). This empirically verifies the causal necessity of Tier~1.
-    \item \textbf{Integrated Defense ($ vs. $):} Combining Tier~1 capability tokens, Tier~2 provenance isolation, and Tier~3 dispatcher gating ($) achieves the Pareto-optimal defense frontier: 0.0\% Executed ASR, 100.0\% Block Rate, and 100.0\% permission-level utility.
+    
+\textbf{Headline Equivalence across Multi-Tier Configurations (, A_5, A_7, A_8$):}
+A key observation from Table~\ref{tab:injecagent_ablation} is that configurations $ (+T_2$), $ (+T_3$), $ (+T_2+T_3+\text{Clarify}$), and $ (+T_2+T_3$) all record identical headline metrics: 0.0\% Executed ASR, 100.0\% Block Rate, and 100.0\% Permission Utility. This convergence occurs because either $ (microkernel scoping) or $ (verifier gating) alone is sufficient to intercept the model's attempts on InjecAgent. However, their internal protective mechanisms diverge fundamentally:
+\begin{itemize}
+    \item $ (+T_3$) lacks provenance isolation ($), allowing 45.0\% of attacks to trigger model hijack attempts that must all be intercepted downstream by the execution gate.
+    \item $ (+T_2$) suppresses attempts to 1.5\% via Tier~2, but lacks the second-line invariant verifier ($) to catch corrupted arguments on authorized tools.
+    \item Only the integrated architecture (, A_8$) provides defense-in-depth: $ suppresses model susceptibility by 96.7\%, while $ and $ cryptographically guarantee zero execution for any residual leakage.
+\end{itemize}
+
+\item \textbf{Integrated Defense ($ vs. $):} Combining Tier~1 capability tokens, Tier~2 provenance isolation, and Tier~3 dispatcher gating ($) achieves the Pareto-optimal defense frontier: 0.0\% Executed ASR, 100.0\% Block Rate, and 100.0\% permission-level utility.
 \end{itemize}
 
 \textbf{Clarification Role and Static Benchmark Dynamics ($ vs. $):}
