@@ -380,34 +380,38 @@ class CapabilityMicrokernel:
                     if clean_path.lower() not in allowed_paths and base_name not in allowed_paths:
                         return False, f"Denial: Parameter violation: file '{path_arg}' not in authorized paths {allowed_paths}"
 
-            # 6b. Recipient Check for email/messaging tools
+            # 6b. Recipient Check for email/messaging tools (exact equality; no substring bypass)
             recip_arg = str(tool_args.get("recipient") or tool_args.get("to") or tool_args.get("email") or tool_args.get("target") or "")
             if recip_arg:
-                clean_recip = recip_arg.lower().strip()
+                clean_recip = recip_arg.lower().strip().rstrip(".")
                 if allowed_recipients:
-                    if clean_recip not in allowed_recipients and not any(ar in clean_recip for ar in allowed_recipients):
+                    if clean_recip not in allowed_recipients:
                         return False, f"Denial: Parameter violation: recipient '{recip_arg}' not in authorized recipients {allowed_recipients}"
 
             # Check for unauthorized CC / BCC exfiltration channels
             for cc_field in ["cc", "bcc", "redirect_to"]:
                 if cc_field in tool_args and tool_args[cc_field]:
-                    cc_val = str(tool_args[cc_field]).lower().strip()
+                    cc_val = str(tool_args[cc_field]).lower().strip().rstrip(".")
                     if allowed_recipients and cc_val not in allowed_recipients:
                         return False, f"Denial: Parameter violation: unauthorized {cc_field.upper()} recipient '{cc_val}'"
 
-            # 6c. Domain Check for network/URL tools
+            # 6c. Domain Check for network/URL tools (exact hostname or dot-bounded subdomain match)
             url_arg = str(tool_args.get("url") or tool_args.get("endpoint") or tool_args.get("domain") or tool_args.get("host") or "")
             if url_arg:
                 clean_url = url_arg.lower().strip()
                 extracted_domain = ""
                 dom_match = re.search(r'https?://([^/:]+)', clean_url)
                 if dom_match:
-                    extracted_domain = dom_match.group(1).lower()
+                    extracted_domain = dom_match.group(1).lower().rstrip(".")
                 else:
-                    extracted_domain = clean_url.split("/")[0]
+                    extracted_domain = clean_url.split("/")[0].split(":")[0].rstrip(".")
 
                 if allowed_domains and extracted_domain:
-                    if extracted_domain not in allowed_domains and not any(ad in extracted_domain for ad in allowed_domains):
+                    domain_ok = any(
+                        extracted_domain == ad or extracted_domain.endswith("." + ad)
+                        for ad in allowed_domains
+                    )
+                    if not domain_ok:
                         return False, f"Denial: Parameter violation: destination domain '{extracted_domain}' not in authorized domains {allowed_domains}"
 
         # Record nonce in replay cache upon successful action authorization if consume_nonce is True

@@ -172,3 +172,27 @@ def test_side_effect_spy_zero_execution(dispatcher):
     assert execution_counter == 0  # CRITICAL INVARIANT: ZERO side effects executed!
     assert "Denial" in gate_res.execution_result or "GATED_BLOCKED" in gate_res.execution_result
 
+def test_substring_recipient_and_domain_spoofing_blocked(kernel):
+    """Verify that exact equality prevents substring recipient spoofing and dot-bounded check prevents domain spoofing."""
+    tok_r = kernel.generate_capability_token("Please send email to alice with the summary.", session_id="s_sub1")
+    ok_r, reason_r = kernel.verify_action_capability(
+        token=tok_r,
+        tool_name="send_email",
+        session_id="s_sub1",
+        tool_args={"recipient": "alice@evil.org"},
+        consume_nonce=False
+    )
+    assert ok_r is False
+    assert "not in authorized recipients" in reason_r.lower()
+
+    tok_d = kernel.generate_capability_token("Fetch status from https://company.com/status", session_id="s_sub2")
+    ok_d, reason_d = kernel.verify_action_capability(
+        token=tok_d,
+        tool_name="fetch_url",
+        session_id="s_sub2",
+        tool_args={"url": "https://company.com.attacker.net/leak"},
+        consume_nonce=False
+    )
+    assert ok_d is False
+    assert "not in authorized domains" in reason_d.lower()
+
