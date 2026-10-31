@@ -1,6 +1,6 @@
 # TriGuard v2: Pre-Execution Capability Gateway & Provenance Defense for LLM Agents
 
-[![Tests](https://img.shields.io/badge/Security%20Tests-40%2F40%20Passed-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/Security%20Tests-39%2F39%20Passed-brightgreen.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](#)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Audit](https://img.shields.io/badge/Integrity%20Audit-SHA256%20Verified-blue.svg)](evidence/raw_file_checksums.sha256)
@@ -27,11 +27,11 @@ TriGuard v2 operates across three synchronized tiers:
 ## 🚀 Quickstart & Verification
 
 ### 1. Run Unit & Invariant Test Suite (Zero External Dependencies)
-All 40 security and invariant tests can be run immediately in any standard Python environment without needing external APIs or GPUs:
+All 39 security and invariant tests can be run immediately in any standard Python environment without needing external APIs or GPUs:
 
 ```bash
 pytest tests/ -v
-# Expected: 40 passed
+# Expected: 39 passed
 ```
 
 ### 2. Run Fast CPU Empirical Audit (Latency, Tier-2 Rule Audit, Benign FPR & Extended Ablation)
@@ -128,7 +128,7 @@ TriGuard-LLM-Defense/
 │   ├── clarification.py                       # Session-Bound Clarification State Machine
 │   ├── dispatcher.py                          # Default-deny Tool Dispatcher & Gate
 │   └── defense_triguard_v2.py                 # Baseline Adapter
-├── tests/                                     # 40 Automated Unit & Invariant Tests
+├── tests/                                     # 39 Automated Unit & Invariant Tests
 │   ├── test_token_security.py                 # Signatures, tampering, expiry, replay
 │   ├── test_permissions.py                    # Default-deny, read-only boundaries
 │   ├── test_argument_constraints.py           # Exact recipient/domain/path binding, side-effect spy

